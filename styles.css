@@ -1,0 +1,15 @@
+.text-diff .added {
+  text-decoration: underline;
+  text-decoration-color: var(--bs-warning);
+  text-decoration-line: underline;
+}
+.text-diff .removed {
+  text-decoration: underline;
+  text-decoration-color: var(--bs-danger);
+  color: var(--bs-danger);
+  text-decoration-line: line-through;
+}
+
+#sourceText, #translatedText {
+  height: 15rem;
+}

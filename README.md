@@ -11,5 +11,6 @@ Du benötigst einen API-Key von ModernMT.
 
 ## Tech Stack
 
-- JS: Vue.js 3 | https://vuejs.org/
 - CSS: Bootstrap 5 | https://getbootstrap.com/
+- JavaScript: Vue.js 3 | https://vuejs.org/
+- Diff Implementation: jsdiff |  https://github.com/kpdecker/jsdiff

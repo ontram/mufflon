@@ -1,4 +1,4 @@
-# mufflonapp
+# Das Mufflon
 Prototypische ModernMT-Anwendung
 
 ![Alt text](/screenshots/mufflonapp01.png?raw=true "Screenshot der mufflonapp")

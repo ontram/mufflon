@@ -108,9 +108,9 @@ const app = Vue.createApp({
         headers: {
           Accept: "application/json",
           "MMT-ApiKey": this.apiKey,
-          "MMT-Platform": "ONTRAM",
-          "MMT-PlatformVersion": "6.1",
-          "MMT-PluginVersion": "0.1",
+          "MMT-Platform": "ontram-mufflon-prototype",
+          "MMT-PlatformVersion": "0.1",
+          "MMT-PluginVersion": "0.1"
         },
       })
         .then((response) => response.json())

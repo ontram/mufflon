@@ -132,6 +132,42 @@ const app = Vue.createApp({
         });
     },
 
+    switchLanguages() {
+      // switch languages
+      let sourceLangOld = this.sourceLanguage;
+      this.sourceLanguage = this.targetLanguage;
+      this.targetLanguage = sourceLangOld;
+      // switch the text
+      let sourceTextOld = this.sourceText;
+      this.sourceText = this.translation;
+      this.translation = "";
+      // reset alternatives
+      this.altTranslations = [];
+      // start translation with switched language
+      this.translate();
+    },
+
+    copyTranslationToClipboard() {
+      let textToCopy = this.translation;
+      this.copyToClipboard(textToCopy);
+    },
+
+    copyAlternativeToClipboard(i) {
+      let textToCopy = this.altTranslations[i];
+      this.copyToClipboard(textToCopy);
+    },
+
+    copyToClipboard(textToCopy) {
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        console.debug("Text in Zwischenablage kopiert: " + textToCopy);
+        //this.appendAlert("Der Text wurde in die Zwischenablage kopiert.", "success");
+      })
+      .catch((error) => {
+        console.error("Fehler beim Kopieren in die Zwischenablage: ", error);
+        //this.appendAlert("Fehler beim Kopieren in die Zwischenablage: " + error, "warning");
+      });
+    },
+
     makeDiff(a, b) {
       const textdiff = JsDiff.diffWords(a, b);
       let target = document.createElement("span");

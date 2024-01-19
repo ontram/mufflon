@@ -1,3 +1,7 @@
+[v-cloak] {
+  display: none;
+}
+
 .text-diff .added {
   text-decoration: underline;
   text-decoration-color: var(--bs-warning);
@@ -10,6 +14,7 @@
   text-decoration-line: line-through;
 }
 
-#sourceText, #translatedText {
+#sourceText,
+#translatedText {
   height: 15rem;
 }

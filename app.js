@@ -1,10 +1,6 @@
 /* 
-Prototype: Ttranslating text with ModernMT
+Prototype: Translating text with ModernMT | DeepL | ChatGPT
 */
-
-const mmt = {
-  url: "https://api.modernmt.com",
-};
 
 const LanguageComparator = (a, b) => {
   // console.debug("comparing ", a, b);
@@ -16,17 +12,68 @@ const LanguageComparator = (a, b) => {
   return 0; // if a === b
 };
 
+const availableEngines = [
+  {
+    id: "modernmt",
+    name: "ModernMT",
+    url: config.modernmt.url,
+  },
+  {
+    id: "deepl",
+    name: "DeepL",
+    url: config.deepl.url,
+  },
+  {
+    id: "chatgpt",
+    name: "ChatGPT",
+    url: config.chatgpt.url,
+  },
+];
+
+const prepareDeeplRequest = (sourceText, sourceLanguage, targetLanguage, formality) => {
+  const deeplData = {
+    text: [sourceText],
+    target_lang: targetLanguage,
+    sourceLanguage: sourceLanguage,
+    formality: formality, // [ default | more | less | ... ]
+  };
+  return {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(deeplData),
+    redirect: "follow",
+  };
+};
+
+function fetchAndProcessDeepLTranslation(requestUrl, sourceText, sourceLanguage, targetLanguage, formality) {
+  const deeplRequestOptions = prepareDeeplRequest(sourceText, sourceLanguage, targetLanguage, formality);
+  return fetch(requestUrl, deeplRequestOptions)
+    .then((response) => {
+      if (response.status === 200) {
+        return response.json();
+      } else {
+        throw new Error("Error while requesting DeepL translation");
+      }
+    })
+    .then((result) => {
+      return result.translations[0];
+    });
+}
+
 const app = Vue.createApp({
-  created: function () {
-    if (localStorage.getItem("mmtApiKey")) {
-      this.checkApiKey(localStorage.getItem("mmtApiKey"));
-      this.getLanguages();
-    }
+  mounted: function () {
+    this.getLanguages();
+    this.initialized = true;
+    this.selectedEngine = this.engines[1];
   },
   data: function () {
     return {
-      apiKey: "",
-      apiKeyOk: false,
+      initialized: false,
+      engines: availableEngines,
+      selectedEngine: {},
       languages: [],
       sourceLanguage: "",
       targetLanguage: "",
@@ -35,42 +82,17 @@ const app = Vue.createApp({
       altTranslations: [],
     };
   },
+
   methods: {
-    checkApiKey(anyApiKey) {
-      if (anyApiKey && anyApiKey.length == 36) {
-        this.apiKey = anyApiKey;
-        this.apiKeyOk = true;
-        // console.debug("API-Key is okay: ", this.apiKey);
-        return true;
-      }
-      return false;
-    },
-    saveApiKey() {
+    resetApp() {
       this.resetAlert();
-      if (!this.apiKey) {
-        this.appendAlert("Du hast keinen API-Key eingegeben", "warning");
-        return;
-      }
-      if (this.checkApiKey(this.apiKey)) {
-        localStorage.setItem("mmtApiKey", this.apiKey);
-        // Get Languages
-        this.getLanguages();
-      } else {
-        this.appendAlert("Dieser API-Key ist ungültig", "warning");
-        return;
-      }
-    },
-    invalidateApiKey() {
-      this.resetAlert();
-      this.apiKey = "";
-      this.apiKeyOk = false;
-      localStorage.removeItem("mmtApiKey");
       this.sourceLanguage = "";
       this.targetLanguage = "";
       this.sourceText = "";
       this.translation = "";
       this.altTranslations = [];
     },
+
     getLanguages() {
       let languageCodes = mmtLanguages;
       let sortedLanguages = [];
@@ -87,49 +109,96 @@ const app = Vue.createApp({
       // set default value: en
       this.targetLanguage = "en";
     },
+
     translate() {
       this.resetAlert();
+      this.translation = "";
+      this.altTranslations = [];
 
       if (!this.sourceText) {
         this.appendAlert("Du hast keinen Text eingegeben.", "danger");
         return;
       }
 
-      let params = new URLSearchParams({
-        source: this.sourceLanguage, // automatic detection when empty
-        target: this.targetLanguage,
-        q: this.sourceText,
-        alt_translations: 3,
-      });
-      let requestUrl = mmt.url + "/translate?" + params.toString();
+      let requestUrl = this.selectedEngine.url;
 
-      fetch(requestUrl, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "MMT-ApiKey": this.apiKey,
-          "MMT-Platform": "ontram-mufflon-prototype",
-          "MMT-PlatformVersion": "0.1",
-          "MMT-PluginVersion": "0.1"
-        },
-      })
-        .then((response) => response.json())
-        .then((response) => {
-          // console.debug("Result =", JSON.stringify(response.data));
-          if (response.status == 200) {
-            if (response.data.detectedLanguage) {
-              this.sourceLanguage = response.data.detectedLanguage;
-            }
-            this.translation = response.data.translation;
-            this.altTranslations = response.data.altTranslations;
-          } else {
-            this.appendAlert("Es ist leider ein Fehler aufgetreten:<br>" + JSON.stringify(response), "danger");
+      switch (this.selectedEngine.id) {
+        case "modernmt":
+          const mmtParams = new URLSearchParams({
+            source: this.sourceLanguage, // automatic detection when empty
+            target: this.targetLanguage,
+            q: this.sourceText,
+            alt_translations: 3,
+          });
+          requestUrl = requestUrl + "/translate?" + mmtParams.toString();
+
+          fetch(requestUrl, {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              "MMT-Platform": "ontram-mufflon-prototype",
+              "MMT-PlatformVersion": "0.1",
+              "MMT-PluginVersion": "0.1",
+              // MMT-ApiKey is added in proxy
+            },
+          })
+            .then((response) => response.json())
+            .then((response) => {
+              // console.debug("Result =", JSON.stringify(response.data));
+              if (response.status == 200) {
+                if (response.data.detectedLanguage) {
+                  this.sourceLanguage = response.data.detectedLanguage;
+                }
+                this.translation = response.data.translation;
+                this.altTranslations = response.data.altTranslations;
+              } else {
+                this.appendAlert("Es ist leider ein Fehler aufgetreten:<br>" + JSON.stringify(response), "danger");
+              }
+            })
+            .catch((error) => {
+              console.log(error);
+              this.appendAlert("Es ist leider ein Fehler aufgetreten.", "danger");
+            });
+          break;
+
+        case "deepl":
+          // first request with formality=default
+          console.log("starting request...");
+          fetchAndProcessDeepLTranslation(requestUrl, this.sourceText, this.sourceLanguage, this.targetLanguage, "default")
+            .then((translation) => {
+              this.translation = translation.text;
+              this.sourceLanguage = translation.detected_source_language.toLowerCase();
+            })
+            .catch((error) => console.log("Fehler:", error));
+
+          // second and third request with formality=more|less if available for certain languages
+          if (["de", "fr", "it", "es", "nl", "pl", "pt-br", "pt-pt", "ja", "ru"].includes(this.targetLanguage)) {
+            console.log("looking for alternatives...");
+            const formalities = ["prefer_more", "prefer_less"];
+
+            Promise.all(
+              formalities.map((formality) =>
+                fetchAndProcessDeepLTranslation(requestUrl, this.sourceText, this.sourceLanguage, this.targetLanguage, formality).then(
+                  (translation) => translation.text
+                )
+              )
+            )
+              .then((translations) => {
+                this.altTranslations.push(...translations);
+              })
+              .catch((error) => {
+                console.log("Error: ", error);
+                this.appendAlert("Es ist leider ein Fehler aufgetreten:<br>" + JSON.stringify(response), "danger");
+              });
           }
-        })
-        .catch((error) => {
-          console.log(error);
-          this.appendAlert("Es ist leider ein Fehler aufgetreten.", "danger");
-        });
+
+          break;
+
+        case "chatgpt":
+          this.appendAlert("ChatGPT ist leider noch nicht verfügbar.", "warning");
+          console.error("ChatGPT is not yet supported.");
+          break;
+      }
     },
 
     switchLanguages() {
@@ -138,7 +207,6 @@ const app = Vue.createApp({
       this.sourceLanguage = this.targetLanguage;
       this.targetLanguage = sourceLangOld;
       // switch the text
-      let sourceTextOld = this.sourceText;
       this.sourceText = this.translation;
       this.translation = "";
       // reset alternatives
@@ -158,14 +226,14 @@ const app = Vue.createApp({
     },
 
     copyToClipboard(textToCopy) {
-      navigator.clipboard.writeText(textToCopy).then(() => {
-        console.debug("Text in Zwischenablage kopiert: " + textToCopy);
-        //this.appendAlert("Der Text wurde in die Zwischenablage kopiert.", "success");
-      })
-      .catch((error) => {
-        console.error("Fehler beim Kopieren in die Zwischenablage: ", error);
-        //this.appendAlert("Fehler beim Kopieren in die Zwischenablage: " + error, "warning");
-      });
+      navigator.clipboard
+        .writeText(textToCopy)
+        .then(() => {
+          console.debug("Copied to clipboard: " + textToCopy);
+        })
+        .catch((error) => {
+          console.error("Copy to clipboard failed: ", error);
+        });
     },
 
     makeDiff(a, b) {

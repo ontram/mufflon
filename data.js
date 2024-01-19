@@ -1,5 +1,31 @@
 // static data
 
+// reduced list of languages
+const mmtLanguages = [
+  "en", // Englisch
+  "de", // Deutsch
+  "fr", // Französisch
+  "it", // Italienisch
+  "es-ES", // Spanisch (Spanien)
+  "pt-PT", // Portugiesisch (Portugal)
+  "nl", // Niederländisch
+  "sv", // Schwedisch
+  "da", // Dänisch
+  "fi", // Finnisch
+  "el", // Griechisch
+  "pl", // Polnisch
+  "cs", // Tschechisch
+  "hu", // Ungarisch
+  "ro", // Rumänisch
+  "bg", // Bulgarisch
+  "hr", // Kroatisch
+  "sl", // Slowenisch
+  "sk", // Slowakisch
+  "ja", // Japanisch
+  "zh", // Mandarin (Chinesisch)
+];
+
+/* All available languages in ModernMT (as in 2023)
 const mmtLanguages = [
   "azb",
   "tk",
@@ -201,6 +227,6 @@ const mmtLanguages = [
   "shn",
   "szl",
   "nus",
-  "zh",
+  " ",
   "pt",
-];
+];*/

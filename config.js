@@ -2,10 +2,12 @@ let config;
 
 config = {
   modernmt: {
-    url: "http://localhost:8088/modernmt", // using proxy
+    url: "https://proxy/modernmt", // using proxy
   },
   deepl: {
-    url: "http://localhost:8088/deepl/v2/translate", // using proxy
+    url: "https://proxy/deepl", // using proxy
   },
-  chatgpt: {},
+  chatgpt: {
+    url: "https://proxy/chatgpt", // using proxy
+  },
 };

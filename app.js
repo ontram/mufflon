@@ -30,6 +30,45 @@ const availableEngines = [
   },
 ];
 
+const prepareChatGptRequest = (sourceText, sourceLanguage, targetLanguage, context) => {
+  let languageNames = new Intl.DisplayNames(["de"], { type: "language" });
+  let gptTargetLanguage = languageNames.of(targetLanguage);
+
+  const data = {
+    model: "gpt-3.5-turbo-0613",
+    messages: [
+      {
+        role: "system",
+        content:
+          `Du bist ein professioneller Übersetzer. Lass Dir Zeit, um die bestmögliche Übersetzung zu erstellen. Übersetze den Text nach ${gptTargetLanguage}. ` +
+          "Beachte, dass es sich um einen seriösen Text handelt und übersetzte entsprechend. " +
+          "Liefere nur den übersetzten Text zurück ohne Erklärung und ohne Anführungszeichen. " +
+          "Erstelle vier unterschiedliche Varianten der vollständigen Übersetzung und liefere die Varianten im JSON-Format nach folgendem Schema zurück, " +
+          "und setzte dabei auch die korrekten Sprachcodes für Ausgangssprache (sourceLanguage) und Zielsprache (targetLanguage) ein:\n" +
+          '{\n"translations": [\n{\n"id": id,\n"sourceLanguage": "",\n"targetLanguage": "",\n"text": ""\n},\n{\n"id": id,\n"sourceLanguage": "",\n"targetLanguage": "",\n"text": ""\n}\n// Weitere Übersetzungen hier\n]\n}\n',
+      },
+      {
+        role: "user",
+        content: sourceText,
+      },
+    ],
+    temperature: 0.7,
+    max_tokens: 2048,
+    top_p: 1,
+    frequency_penalty: 0,
+    presence_penalty: 0,
+  };
+  return {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+    redirect: "follow",
+  };
+};
+
 const prepareDeeplRequest = (sourceText, sourceLanguage, targetLanguage, formality) => {
   const deeplData = {
     text: [sourceText],
@@ -63,15 +102,18 @@ function fetchAndProcessDeepLTranslation(requestUrl, sourceText, sourceLanguage,
     });
 }
 
+/* ================================================ APP ================================================ */
+
 const app = Vue.createApp({
   mounted: function () {
     this.getLanguages();
     this.initialized = true;
-    this.selectedEngine = this.engines[1];
+    this.selectedEngine = this.engines[2];
   },
   data: function () {
     return {
       initialized: false,
+      loading: false,
       engines: availableEngines,
       selectedEngine: {},
       languages: [],
@@ -163,13 +205,19 @@ const app = Vue.createApp({
 
         case "deepl":
           // first request with formality=default
+          this.loading = true;
           console.log("starting request...");
+          requestUrl = requestUrl + "/v2/translate";
           fetchAndProcessDeepLTranslation(requestUrl, this.sourceText, this.sourceLanguage, this.targetLanguage, "default")
             .then((translation) => {
               this.translation = translation.text;
               this.sourceLanguage = translation.detected_source_language.toLowerCase();
+              this.loading = false;
             })
-            .catch((error) => console.log("Fehler:", error));
+            .catch((error) => {
+              console.log("Fehler:", error);
+              this.loading = false;
+            });
 
           // second and third request with formality=more|less if available for certain languages
           if (["de", "fr", "it", "es", "nl", "pl", "pt-br", "pt-pt", "ja", "ru"].includes(this.targetLanguage)) {
@@ -185,18 +233,52 @@ const app = Vue.createApp({
             )
               .then((translations) => {
                 this.altTranslations.push(...translations);
+                this.loading = false;
               })
               .catch((error) => {
                 console.log("Error: ", error);
                 this.appendAlert("Es ist leider ein Fehler aufgetreten:<br>" + JSON.stringify(response), "danger");
+                this.loading = false;
               });
           }
 
           break;
 
         case "chatgpt":
-          this.appendAlert("ChatGPT ist leider noch nicht verfügbar.", "warning");
-          console.error("ChatGPT is not yet supported.");
+          this.loading = true;
+          console.log("starting request...");
+          requestUrl = requestUrl + "/v1/chat/completions";
+          const context = "Marketing";
+
+          const chatGptRequestOptions = prepareChatGptRequest(this.sourceText, this.sourceLanguage, this.targetLanguage, context);
+
+          fetch(requestUrl, chatGptRequestOptions)
+            .then((response) => response.json())
+            .then((response) => {
+              //console.debug(response);
+              const content = JSON.parse(response.choices[0].message.content);
+              //console.debug("content: ", content);
+              const translations = content.translations;
+              //console.debug("translations: ", translations);
+
+              if (translations[0].sourceLanguage) {
+                this.sourceLanguage = translations[0].sourceLanguage;
+              }
+              this.translation = translations[0].text;
+
+              for (let i = 1; i <= 2; i++) {
+                if (translations[i].text) {
+                  this.altTranslations.push(translations[i].text);
+                }
+              }
+              this.loading = false;
+            })
+            .catch((error) => {
+              console.log(error);
+              this.appendAlert("Es ist leider ein Fehler aufgetreten.", "danger");
+              this.loading = false;
+            });
+
           break;
       }
     },

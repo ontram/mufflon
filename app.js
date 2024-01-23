@@ -266,7 +266,7 @@ const app = Vue.createApp({
               }
               this.translation = translations[0].text;
 
-              for (let i = 1; i <= 2; i++) {
+              for (let i = 1; i <= 3; i++) {
                 if (translations[i].text) {
                   this.altTranslations.push(translations[i].text);
                 }
